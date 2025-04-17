@@ -1,8 +1,21 @@
 import 'dart:developer';
 import 'package:app_usage/app_usage.dart';
 import 'package:focie/alarm_services/alarm_services.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class UsageStat {
+  Future<void> audioPermission() async {
+    if (await Permission.audio.isGranted) {
+      return;
+    } else {
+      try {
+        await Permission.audio.request();
+      } catch (e) {
+        log('Permission required: $e');
+      }
+    }
+  }
+
   Future<bool> requestUsagePermission() async {
     try {
       await AppUsage().getAppUsage(DateTime.now(), DateTime.now());

@@ -3,9 +3,12 @@ import 'dart:developer';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:focie/alarm_services/usage_services.dart';
+import 'package:on_audio_query/on_audio_query.dart';
 
 class AlarmService {
   static final AudioPlayer _audioPlayer = AudioPlayer();
+    final OnAudioQuery _audioQuery = OnAudioQuery();
+
 
   static Future<void> playMotivationAlarm() async {
     try {

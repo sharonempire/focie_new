@@ -34,6 +34,9 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_background_service: ^5.1.0
+  on_audio_query: ^2.9.0
+  permission_handler: ^12.0.0+1
+  rive: ^0.13.20
 
 
 dev_dependencies:
@@ -52,7 +55,7 @@ flutter:
   uses-material-design: true
   # To add assets to your application, add an assets section, like this:
   assets:
-    - assets/audio1.mp3
+    - assets/
   #   - images/a_dot_ham.jpeg
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
