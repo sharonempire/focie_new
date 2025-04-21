@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:rive/rive.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:focie/alarm_services/usage_services.dart';
+import 'package:focie/helpers/global_snackbar.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../alarm_services/alarm_services.dart';
+import '../main.dart'; // to access the notification plugin
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,14 +15,19 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
-  bool runnnig = false;
+  bool running = false;
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
+
+  showSnackbar(String message) {
+    globalSnackbar(context: context, content: message);
+  }
 
   @override
   void initState() {
     super.initState();
-    UsageStat().audioPermission();
+    UsageStatService.requestPermissions();
+    requestNotificationPermission();
     WidgetsBinding.instance.addObserver(this);
 
     _controller = AnimationController(
@@ -48,18 +56,59 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  void requestNotificationPermission() async {
+    if (await Permission.notification.isDenied) {
+      await Permission.notification.request();
+    }
+  }
+
+  Future<void> showFocusNotification(String title, String body) async {
+    AndroidNotificationDetails androidNotificationDetails =
+        AndroidNotificationDetails(
+          'focus_channel', // Notification channel ID
+          'Focus Mode', // Channel name
+          importance: Importance.max,
+          priority: Priority.high,
+          playSound: false,
+          visibility: NotificationVisibility.public,
+          indeterminate: true,
+
+          ticker: 'ticker',
+          actions: [
+            AndroidNotificationAction('action_start', 'Stop tracking'),
+            AndroidNotificationAction('action_stop', '10 more minutes'),
+          ],
+        );
+
+    NotificationDetails notificationDetails = NotificationDetails(
+      android: androidNotificationDetails,
+    );
+
+    await flutterLocalNotificationsPlugin.show(
+      0,
+      title,
+      body,
+      notificationDetails,
+    );
+  }
+
   Future<void> handleButtonPress() async {
-    if (!runnnig) {
-      final permited = await UsageStat().requestUsagePermission();
+    if (!running) {
+      final permited = await UsageStatService().requestUsagePermission();
       if (permited) {
-        await BackgroundUsageService.initializeService();
-        setState(() => runnnig = true);
-        _controller.stop();
+        setState(() {
+          running = true;
+        });
+        _controller.stop(); // Stop bounce
+        await showSnackbar("Focus Mode On🚀 Tracking started.");
       }
     } else {
       await BackgroundUsageService.stopService();
-      setState(() => runnnig = false);
-      _controller.repeat(reverse: true);
+      setState(() {
+        running = false;
+      });
+      _controller.repeat(reverse: true); // Resume bounce
+      await showSnackbar("Focus Mode Off ❌, Tracking stopped.");
     }
   }
 
@@ -68,35 +117,50 @@ class _HomeScreenState extends State<HomeScreen>
     return Scaffold(
       body: Stack(
         children: [
-          /// 🌌 Fullscreen Rive animation as background
-          const Positioned.fill(
-            child: RiveAnimation.asset(
-              'assets/revolve.riv',
-              fit: BoxFit.cover,
+          // Background
+          Container(
+            decoration: const BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment.center,
+                radius: 1.5,
+                colors: [
+                  Color(0xFF0D0D2B),
+                  Color(0xFF1B1B5F),
+                  Color(0xFF12003D),
+                  Colors.black,
+                ],
+              ),
             ),
           ),
-
-          /// 🚀 Animated Bouncing Button
           Center(
-            child: ScaleTransition(
-              scale: _scaleAnimation,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
-                  backgroundColor:
-                      runnnig ? Colors.redAccent : Colors.deepPurpleAccent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  elevation: 10,
-                  textStyle: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ScaleTransition(
+                  scale:
+                      running ? AlwaysStoppedAnimation(1.0) : _scaleAnimation,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 40,
+                        vertical: 20,
+                      ),
+                      backgroundColor:
+                          running ? Colors.redAccent : Colors.deepPurpleAccent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      elevation: 10,
+                      textStyle: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    onPressed: handleButtonPress,
+                    child: Text(running ? "Stop" : "Run"),
                   ),
                 ),
-                onPressed: handleButtonPress,
-                child: Text(runnnig ? "Stop" : "Run"),
-              ),
+              ],
             ),
           ),
         ],

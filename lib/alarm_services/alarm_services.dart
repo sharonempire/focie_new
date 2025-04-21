@@ -1,19 +1,18 @@
+// alarm_service.dart
 import 'dart:async';
 import 'dart:developer';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:focie/alarm_services/usage_services.dart';
-import 'package:on_audio_query/on_audio_query.dart';
 
 class AlarmService {
   static final AudioPlayer _audioPlayer = AudioPlayer();
-    final OnAudioQuery _audioQuery = OnAudioQuery();
-
 
   static Future<void> playMotivationAlarm() async {
     try {
       log('🚀 Playing Motivation Alarm...');
-      await _audioPlayer.play(AssetSource('audio1.mp3')); // Play from assets
+      await _audioPlayer.play(AssetSource('audio1.mp3'));
     } catch (e) {
       log('❌ Error playing alarm: $e');
     }
@@ -25,20 +24,22 @@ class AlarmService {
   }
 }
 
+
 @pragma('vm:entry-point')
 class BackgroundUsageService {
   static final FlutterBackgroundService _service = FlutterBackgroundService();
+  static final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
 
-   @pragma('vm:entry-point')
-   static void onStart(ServiceInstance service) async {
+  @pragma('vm:entry-point')
+  static void onStart(ServiceInstance service) async {
     service.on('stopService').listen((event) {
-      service.stopSelf();
+      stopService();
     });
-    Timer.periodic(Duration(seconds: 2), (timer) async {
-      log('Background service running...');
-      if (service is AndroidServiceInstance &&
-          await service.isForegroundService()) {
-        await UsageStat().checkAndPlayAlarm();
+
+    Timer.periodic(Duration(seconds: 10), (timer) async {
+      log('⏱ Background service check...');
+      if (service is AndroidServiceInstance && await service.isForegroundService()) {
+        await UsageStatService.checkAndPlayAlarm();
       }
     });
   }
@@ -49,18 +50,60 @@ class BackgroundUsageService {
         autoStart: true,
         isForegroundMode: true,
         foregroundServiceTypes: [AndroidForegroundType.mediaPlayback],
-        initialNotificationTitle: 'Focie',
-        initialNotificationContent: 'Monitoring social media usage...',
         onStart: onStart,
       ),
       iosConfiguration: IosConfiguration(),
     );
-    final serviceInstance = await _service.startService();
-    log('Service started: $serviceInstance');
+    await _service.startService();
+    log('✅ Background service started');
   }
 
   static Future<void> stopService() async {
     _service.invoke('stopService');
-    log('Background service stopped');
+    await AlarmService.stopAlarm();
+    log('🛑 Background service stopped');
+  }
+
+  static Future<void> initializeNotifications() async {
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const InitializationSettings initializationSettings = InitializationSettings(
+      android: initializationSettingsAndroid,
+    );
+    await _notificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (details) async {
+        if (details.actionId == 'stop_action') {
+          await stopService();
+        }
+      },
+    );
+  }
+
+  static Future<void> showNotificationWithAction() async {
+    const AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
+      'focus_channel',
+      'Focus Mode',
+      importance: Importance.max,
+      priority: Priority.high,
+      ticker: 'ticker',
+      actions: [
+        AndroidNotificationAction(
+          'stop_action',
+          'Stop Alarm',
+        ),
+      ],
+    );
+
+    const NotificationDetails platformChannelSpecifics = NotificationDetails(
+      android: androidPlatformChannelSpecifics,
+    );
+
+    await _notificationsPlugin.show(
+      0,
+      'Focie',
+      'Monitoring social media usage...',
+      platformChannelSpecifics,
+    );
   }
 }

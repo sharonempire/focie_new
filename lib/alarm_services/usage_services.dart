@@ -3,31 +3,30 @@ import 'package:app_usage/app_usage.dart';
 import 'package:focie/alarm_services/alarm_services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-class UsageStat {
-  Future<void> audioPermission() async {
-    if (await Permission.audio.isGranted) {
-      return;
-    } else {
-      try {
-        await Permission.audio.request();
-      } catch (e) {
-        log('Permission required: $e');
-      }
+class UsageStatService {
+  static Future<void> requestPermissions() async {
+    if (await Permission.audio.isDenied) {
+      await Permission.audio.request();
+    }
+    if (await Permission.notification.isDenied) {
+      await Permission.notification.request();
     }
   }
 
   Future<bool> requestUsagePermission() async {
     try {
       await AppUsage().getAppUsage(DateTime.now(), DateTime.now());
-      return true; // Permission granted
+      return true;
     } catch (e) {
-      log('Permission required: $e');
-      return false; // Permission denied
+      log('Usage permission required: $e');
+      return false;
     }
   }
 
-  Future<void> checkAndPlayAlarm() async {
+  static Future<void> checkAndPlayAlarm() async {
     try {
+      BackgroundUsageService.initializeNotifications();
+      BackgroundUsageService.showNotificationWithAction();
       DateTime endDate = DateTime.now();
       DateTime startDate = endDate.subtract(Duration(minutes: 30));
       List<AppUsageInfo> infoList = await AppUsage().getAppUsage(
@@ -36,12 +35,11 @@ class UsageStat {
       );
 
       for (var info in infoList) {
-        log(info.packageName);
-        if (info.packageName == 'com.instagram.android' ||
-            info.packageName == 'com.google.android.youtube') {
-          if (info.usage.inMilliseconds > 60000) {
-            await AlarmService.playMotivationAlarm();
-          }
+        if ((info.packageName == 'com.instagram.android' ||
+                info.packageName == 'com.google.android.youtube') &&
+            info.usage.inMilliseconds > 60000) {
+          await AlarmService.playMotivationAlarm();
+          return;
         }
       }
     } catch (e) {
