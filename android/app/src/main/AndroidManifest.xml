@@ -6,10 +6,10 @@
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
-    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions"/>
 
     <application
         android:label="Focie"
@@ -39,12 +39,13 @@
             android:name="flutterEmbedding"
             android:value="2"/>
 
-        <!-- Background Service -->
+        <!-- Background Service with conflict fix -->
         <service
-        
             android:name="id.flutter.flutter_background_service.BackgroundService"
-            android:foregroundServiceType="mediaPlayback"/>
-
+            android:permission="android.permission.FOREGROUND_SERVICE"
+            android:foregroundServiceType="mediaPlayback"
+            android:exported="false"
+            tools:replace="android:exported" />
     </application>
 
     <!-- Required for text processing -->

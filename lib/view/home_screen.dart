@@ -1,10 +1,10 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:focie/alarm_services/usage_services.dart';
 import 'package:focie/helpers/global_snackbar.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../alarm_services/alarm_services.dart';
-import '../main.dart'; // to access the notification plugin
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -27,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen>
   void initState() {
     super.initState();
     UsageStatService.requestPermissions();
-    requestNotificationPermission();
+    requestPermissions();
     WidgetsBinding.instance.addObserver(this);
 
     _controller = AnimationController(
@@ -56,45 +56,23 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  void requestNotificationPermission() async {
-    if (await Permission.notification.isDenied) {
+  bool isRequesting = false;
+
+  Future<void> requestPermissions() async {
+    if (isRequesting) return;
+    isRequesting = true;
+    try {
       await Permission.notification.request();
+    } catch (e) {
+      log("Permission error: $e");
+    } finally {
+      isRequesting = false;
     }
-  }
-
-  Future<void> showFocusNotification(String title, String body) async {
-    AndroidNotificationDetails androidNotificationDetails =
-        AndroidNotificationDetails(
-          'focus_channel', // Notification channel ID
-          'Focus Mode', // Channel name
-          importance: Importance.max,
-          priority: Priority.high,
-          playSound: false,
-          visibility: NotificationVisibility.public,
-          indeterminate: true,
-
-          ticker: 'ticker',
-          actions: [
-            AndroidNotificationAction('action_start', 'Stop tracking'),
-            AndroidNotificationAction('action_stop', '10 more minutes'),
-          ],
-        );
-
-    NotificationDetails notificationDetails = NotificationDetails(
-      android: androidNotificationDetails,
-    );
-
-    await flutterLocalNotificationsPlugin.show(
-      0,
-      title,
-      body,
-      notificationDetails,
-    );
   }
 
   Future<void> handleButtonPress() async {
     if (!running) {
-      final permited = await UsageStatService().requestUsagePermission();
+      final permited = await UsageStatService.requestUsagePermission();
       if (permited) {
         setState(() {
           running = true;

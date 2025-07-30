@@ -1,25 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:focie/alarm_services/alarm_services.dart';
-
 import 'view/home_screen.dart';
-
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await BackgroundUsageService.initializeService();
 
-  const AndroidInitializationSettings androidInitSettings =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
-
-  const InitializationSettings initSettings = InitializationSettings(
-    android: androidInitSettings,
-  );
-
-  await flutterLocalNotificationsPlugin.initialize(initSettings);
-
+  Future.microtask(() async {
+    await BackgroundUsageService.initializeNotifications();
+    await BackgroundUsageService.initializeService();
+  });
   runApp(const MyApp());
 }
 
